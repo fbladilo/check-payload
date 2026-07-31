@@ -574,3 +574,8 @@ files = [
 [[tag.rhel-coreos-10.ignore]]
 error = "ErrOSNotCertified"
 tags = ["rhel-coreos-10"]
+# agentic-skills is a FROM scratch data-only container with no OS layer;
+# OS-level FIPS validation is not applicable.
+[[tag.agentic-skills.ignore]]
+error = "ErrOSNotCertified"
+tags = ["agentic-skills"]
