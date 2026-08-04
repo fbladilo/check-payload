@@ -140,11 +140,11 @@ func (i ErrIgnoreList) IgnoreTag(tag string, err error) bool {
 }
 
 func (c *Config) GetCertifiedDistributions() []string {
-	return c.ConfigFile.CertifiedDistributions
+	return c.CertifiedDistributions
 }
 
 func (c *Config) GetFIPSCertifiedModules() []FipsModule {
-	return c.ConfigFile.FIPSCertifiedModules
+	return c.FIPSCertifiedModules
 }
 
 func (c *Config) UseFIPSModuleValidation() bool {
