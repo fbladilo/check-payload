@@ -13,7 +13,8 @@ The `verify` target includes:
 
 - `verify-space`: Ensures no trailing whitespace
 - `verify-generate`: Verifies `go generate ./internal/types` is up to date
-- `verify-golangci`: Runs golangci-lint with configured linters (gofumpt, errorlint, unconvert, unparam, revive)
+- `verify-golangci`: Runs golangci-lint with configured linters (errorlint, unconvert, unparam, revive)
+- `verify-fmt`: Runs `golangci-lint fmt --diff` to enforce configured formatters (gofumpt) without rewriting files
 
 All checks must pass before submitting PRs.
 
