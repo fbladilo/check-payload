@@ -57,6 +57,7 @@ var (
 	timeLimit                             time.Duration
 	verbose                               bool
 	localBundlePath                       string
+	localTag                              string
 )
 
 func main() {
@@ -219,11 +220,13 @@ func main() {
 		Run: func(_ *cobra.Command, _ []string) {
 			ctx, cancel := context.WithTimeout(context.Background(), config.TimeLimit)
 			defer cancel()
+			config.LocalTag = localTag
 			results = scan.RunLocalScan(ctx, &config, localBundlePath)
 		},
 	}
 
 	localCmd.Flags().StringVar(&localBundlePath, "path", "", "Path to the local unpacked image bundle")
+	localCmd.Flags().StringVar(&localTag, "tag", "", "Release image tag name the local bundle was unpacked from, enables tag-scoped config exceptions")
 
 	// Add the 'local' subcommand to 'scanCmd'
 	scanCmd.AddCommand(localCmd)

@@ -2,11 +2,116 @@ package validations
 
 import (
 	"context"
+	"errors"
+	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/openshift/check-payload/internal/types"
 )
+
+func TestValidateOS(t *testing.T) {
+	certified := []string{"Red Hat Enterprise Linux release 9.6 (Plow)"}
+
+	cfgWith := func(distributions []string) *types.Config {
+		return &types.Config{
+			ConfigFile: types.ConfigFile{
+				CertifiedDistributions: distributions,
+			},
+		}
+	}
+
+	writeReleaseFile := func(t *testing.T, root, content string) {
+		t.Helper()
+		etc := filepath.Join(root, "etc")
+		if err := os.MkdirAll(etc, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(etc, "redhat-release"), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	tests := []struct {
+		name          string
+		setup         func(t *testing.T, root string)
+		distributions []string
+		wantErr       error
+		wantWarning   bool
+		wantCertified bool
+	}{
+		{
+			name:          "missing release file classified as ErrDistributionFileMissing",
+			setup:         func(*testing.T, string) {},
+			distributions: certified,
+			wantErr:       types.ErrDistributionFileMissing,
+		},
+		{
+			name: "dangling symlink classified as ErrDistributionFileMissing",
+			setup: func(t *testing.T, root string) {
+				etc := filepath.Join(root, "etc")
+				if err := os.MkdirAll(etc, 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Symlink("/usr/lib/system-release", filepath.Join(etc, "redhat-release")); err != nil {
+					t.Fatal(err)
+				}
+			},
+			distributions: certified,
+			wantErr:       types.ErrDistributionFileMissing,
+		},
+		{
+			name: "certified distribution",
+			setup: func(t *testing.T, root string) {
+				writeReleaseFile(t, root, "Red Hat Enterprise Linux release 9.6 (Plow)")
+			},
+			distributions: certified,
+			wantCertified: true,
+		},
+		{
+			name: "uncertified distribution",
+			setup: func(t *testing.T, root string) {
+				writeReleaseFile(t, root, "Fedora release 42 (Adams)")
+			},
+			distributions: certified,
+		},
+		{
+			name:          "empty certified distributions warns",
+			setup:         func(*testing.T, string) {},
+			distributions: nil,
+			wantErr:       types.ErrCertifiedDistributionsEmpty,
+			wantWarning:   true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			tc.setup(t, root)
+
+			info := ValidateOS(cfgWith(tc.distributions), root)
+
+			if tc.wantErr != nil {
+				if info.Error == nil {
+					t.Fatalf("expected error %v, got nil", tc.wantErr)
+				}
+				if !errors.Is(info.Error.GetError(), tc.wantErr) {
+					t.Errorf("expected error %v, got %v", tc.wantErr, info.Error.GetError())
+				}
+				if gotWarning := info.Error.Level == types.Warning; gotWarning != tc.wantWarning {
+					t.Errorf("expected warning=%v, got level %v", tc.wantWarning, info.Error.Level)
+				}
+				return
+			}
+			if info.Error != nil {
+				t.Fatalf("expected no error, got %v", info.Error)
+			}
+			if info.Certified != tc.wantCertified {
+				t.Errorf("expected certified=%v, got %v", tc.wantCertified, info.Certified)
+			}
+		})
+	}
+}
 
 func TestValidateModuleArtifacts(t *testing.T) {
 	ctx := context.Background()
