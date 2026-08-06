@@ -148,8 +148,8 @@ func TestRunLocalScan(t *testing.T) {
 
 // TestRunLocalScanDataOnlyImage covers FROM-scratch data-only images (no OS
 // layer, no binaries): without tag identity the scan fails with
-// ErrDistributionFileMissing; with --tag and a matching tag ignore the OS
-// validation is skipped.
+// ErrDistributionFileMissing; with --tag and a matching tag ignore the scan
+// skips OS validation.
 func TestRunLocalScanDataOnlyImage(t *testing.T) {
 	tagIgnoredOsConfig := func(localTag string) *types.Config {
 		return &types.Config{
@@ -216,8 +216,8 @@ func TestRunLocalScanDataOnlyImage(t *testing.T) {
 }
 
 // TestRunLocalScanTagDoesNotChangeScanRoot pins the --tag semantics: the tag
-// carries identity only. The scan root stays --path; it is never resolved to
-// a <path>/<tag> subdirectory.
+// carries identity only. The scan root stays --path; the scanner never
+// resolves it to a <path>/<tag> subdirectory.
 func TestRunLocalScanTagDoesNotChangeScanRoot(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -244,11 +244,11 @@ func TestRunLocalScanTagDoesNotChangeScanRoot(t *testing.T) {
 		},
 	}
 
-	// No <root>/some-tag subdirectory exists: if the tag were joined into
-	// the scan root, the scan would fail on a missing directory.
+	// No <root>/some-tag subdirectory exists: if the scanner joined the tag
+	// into the scan root, the scan would fail on a missing directory.
 	results := RunLocalScan(ctx, cfg, root)
 	if IsFailed(results) {
-		t.Error("expected scan rooted at --path to pass; a failure suggests the tag was joined into the scan root")
+		t.Error("expected scan rooted at --path to pass; a failure suggests the scanner joined the tag into the scan root")
 	}
 }
 
