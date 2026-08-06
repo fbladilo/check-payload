@@ -130,7 +130,7 @@ func RunLocalScan(ctx context.Context, cfg *types.Config, localBundlePath string
 	var runs []*types.ScanResults
 
 	// Simulate payload based on local directory structure
-	localPayload := simulateLocalPayload(localBundlePath)
+	localPayload := simulateLocalPayload(localBundlePath, cfg.LocalTag)
 
 	// Rest of the function follows the structure of RunPayloadScan
 	parallelism := cfg.Parallelism
@@ -180,18 +180,16 @@ func scanLocal(ctx context.Context, cfg *types.Config, tx <-chan *Request, rx ch
 	}
 }
 
-// simulateLocalPayload generates a slice of v1.TagReference based on the local bundle directory structure.
-// Adjust this to match how your local bundle's tags are represented in the file system if needed
-func simulateLocalPayload(localBundlePath string) []*v1.TagReference {
-	// Placeholder: mock implementation to avoid linter warning about always returning nil
-	// Replace with actual logic when ready
+// simulateLocalPayload generates a slice of v1.TagReference for the local
+// bundle. The optional tagName carries the release image tag identity so
+// tag-scoped config exceptions can match; it does not affect path resolution.
+func simulateLocalPayload(localBundlePath, tagName string) []*v1.TagReference {
 	if localBundlePath == "" {
 		return nil
 	}
 
-	// Example: Create a mock tag reference
 	mockTag := &v1.TagReference{
-		Name: "",
+		Name: tagName,
 		From: &corev1.ObjectReference{
 			Name: "",
 		},
@@ -329,8 +327,11 @@ func validateTag(ctx context.Context, tag *v1.TagReference, cfg *types.Config) *
 
 // validateTagLocal adapts validateTag for a local directory path.
 func validateTagLocal(ctx context.Context, tag *v1.TagReference, cfg *types.Config, bundlePath string) *types.ScanResults {
-	// Determine the path within the local bundle that corresponds to the tag.
-	localTagPath := filepath.Join(bundlePath, tag.Name)
+	// The tag only carries identity (for tag-scoped config exceptions);
+	// the bundle path is the scan root regardless of tag name. Clean keeps
+	// the pre-tag behavior of filepath.Join (e.g. strips trailing slashes
+	// so stripMountPath yields absolute inner paths).
+	localTagPath := filepath.Clean(bundlePath)
 
 	// Verify the path exists and is a directory.
 	fileInfo, err := os.Stat(localTagPath)

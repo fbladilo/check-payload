@@ -27,17 +27,13 @@ func ValidateOS(cfg *types.Config, mountPath string) (info types.OSInfo) {
 
 	path, err := GetTargetPath(mountPath)
 	if err != nil {
-		info.Error = types.NewValidationError(err)
+		info.Error = classifyReleaseFileError(err)
 		return info
 	}
 
 	f, err := os.ReadFile(path)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			info.Error = types.NewValidationError(types.ErrDistributionFileMissing)
-		} else {
-			info.Error = types.NewValidationError(err)
-		}
+		info.Error = classifyReleaseFileError(err)
 		return info
 	}
 	if len(f) == 0 {
@@ -52,6 +48,15 @@ func ValidateOS(cfg *types.Config, mountPath string) (info types.OSInfo) {
 		}
 	}
 	return info
+}
+
+// classifyReleaseFileError maps a missing release file (from either Lstat or
+// ReadFile) to ErrDistributionFileMissing so config exceptions can match it.
+func classifyReleaseFileError(err error) *types.ValidationError {
+	if errors.Is(err, os.ErrNotExist) {
+		return types.NewValidationError(types.ErrDistributionFileMissing)
+	}
+	return types.NewValidationError(err)
 }
 
 // ValidateModuleArtifacts checks that each detected module's certified

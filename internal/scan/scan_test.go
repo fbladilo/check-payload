@@ -2,6 +2,9 @@ package scan
 
 import (
 	"context"
+	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -140,6 +143,112 @@ func TestRunLocalScan(t *testing.T) {
 				t.Errorf("Test %s: expected pass = %t, got pass = %t", tc.name, tc.expectedResult, passed)
 			}
 		})
+	}
+}
+
+// TestRunLocalScanDataOnlyImage covers FROM-scratch data-only images (no OS
+// layer, no binaries): without tag identity the scan fails with
+// ErrDistributionFileMissing; with --tag and a matching tag ignore the scan
+// skips OS validation.
+func TestRunLocalScanDataOnlyImage(t *testing.T) {
+	tagIgnoredOsConfig := func(localTag string) *types.Config {
+		return &types.Config{
+			OutputFormat: "table",
+			Parallelism:  1,
+			TimeLimit:    30 * time.Second,
+			LocalTag:     localTag,
+			ConfigFile: types.ConfigFile{
+				PayloadIgnores: make(map[string]types.IgnoreLists),
+				TagIgnores: map[string]types.IgnoreLists{
+					"agentic-skills": {
+						ErrIgnores: types.ErrIgnoreList{{
+							Error: types.KnownError{Err: types.ErrOSNotCertified},
+							Tags:  []string{"agentic-skills"},
+						}},
+					},
+				},
+				RPMIgnores:             make(map[string]types.IgnoreLists),
+				CertifiedDistributions: []string{"Red Hat Enterprise Linux release 9.2 (Plow)"},
+			},
+		}
+	}
+
+	t.Run("no tag fails with ErrDistributionFileMissing", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		results := RunLocalScan(ctx, tagIgnoredOsConfig(""), t.TempDir())
+		if !IsFailed(results) {
+			t.Fatal("expected scan to fail without tag identity")
+		}
+		var found bool
+		for _, run := range results {
+			for _, res := range run.Items {
+				if res.Error != nil && errors.Is(res.Error.GetError(), types.ErrDistributionFileMissing) {
+					found = true
+				}
+			}
+		}
+		if !found {
+			t.Error("expected ErrDistributionFileMissing in results")
+		}
+	})
+
+	t.Run("matching tag ignore skips OS validation", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		results := RunLocalScan(ctx, tagIgnoredOsConfig("agentic-skills"), t.TempDir())
+		if IsFailed(results) {
+			t.Error("expected scan to pass with matching tag ignore")
+		}
+	})
+
+	t.Run("non-matching tag still fails", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		results := RunLocalScan(ctx, tagIgnoredOsConfig("other-tag"), t.TempDir())
+		if !IsFailed(results) {
+			t.Error("expected scan to fail for non-matching tag")
+		}
+	})
+}
+
+// TestRunLocalScanTagDoesNotChangeScanRoot pins the --tag semantics: the tag
+// carries identity only. The scan root stays --path; the scanner never
+// resolves it to a <path>/<tag> subdirectory.
+func TestRunLocalScanTagDoesNotChangeScanRoot(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "etc"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	release := []byte("Red Hat Enterprise Linux release 9.2 (Plow)")
+	if err := os.WriteFile(filepath.Join(root, "etc", "redhat-release"), release, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := &types.Config{
+		OutputFormat: "table",
+		Parallelism:  1,
+		TimeLimit:    30 * time.Second,
+		LocalTag:     "some-tag",
+		ConfigFile: types.ConfigFile{
+			PayloadIgnores:         make(map[string]types.IgnoreLists),
+			TagIgnores:             make(map[string]types.IgnoreLists),
+			RPMIgnores:             make(map[string]types.IgnoreLists),
+			CertifiedDistributions: []string{string(release)},
+		},
+	}
+
+	// No <root>/some-tag subdirectory exists: if the scanner joined the tag
+	// into the scan root, the scan would fail on a missing directory.
+	results := RunLocalScan(ctx, cfg, root)
+	if IsFailed(results) {
+		t.Error("expected scan rooted at --path to pass; a failure suggests the scanner joined the tag into the scan root")
 	}
 }
 

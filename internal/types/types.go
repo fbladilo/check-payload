@@ -42,6 +42,7 @@ type Config struct {
 	FromURL                 string        `json:"from_url"`
 	InsecurePull            bool          `json:"insecure_pull"`
 	Limit                   int           `json:"limit"`
+	LocalTag                string        `json:"local_tag"`
 	ContainerImageComponent string        `json:"container_image_component"`
 	ContainerImage          string        `json:"container_image"`
 	OutputFile              string        `json:"output_file"`
