@@ -5,7 +5,7 @@ all:
 	CGO_ENABLED=0 $(GO) build -ldflags="-X main.Commit=$$(git describe --tags --abbrev=8 --dirty --always --long)"
 
 .PHONY: verify
-verify: verify-space verify-generate verify-golangci
+verify: verify-space verify-generate verify-golangci verify-fmt
 
 .PHONY: test
 test:
@@ -14,6 +14,10 @@ test:
 .PHONY: verify-golangci
 verify-golangci:
 	golangci-lint run
+
+.PHONY: verify-fmt
+verify-fmt: ## Ensure code is formatted per configured formatters (gofumpt)
+	golangci-lint fmt --diff
 
 .PHONY: verify-space
 verify-space: ## Ensure no whitespace at EOL

@@ -1,12 +1,25 @@
-# For documentation, see https://golangci-lint.run/usage/configuration/
+version: "2"
 
-run:
-  timeout: 5m
+# For documentation, see https://golangci-lint.run/usage/configuration/
 
 linters:
   enable:
-    - gofumpt
     - errorlint
     - unconvert
     - unparam
     - revive
+  exclusions:
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - path: internal/types/
+        linters:
+          - revive
+        text: "var-naming: avoid meaningless package names"
+
+formatters:
+  enable:
+    - gofumpt
