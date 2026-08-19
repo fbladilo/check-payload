@@ -252,6 +252,36 @@ error = "ErrNotDynLinked"
 files = ["/usr/local/bin/mta-cli"]
 
 # -----------------------------------------------------------------------------
+# Dev Spaces Code (devspaces-code-rhel9-container)
+#
+# ripgrep (BurntSushi/ripgrep) is a text search tool used by VS Code for
+# workspace search. It does not perform any cryptographic operations.
+# Binary inspection confirmed zero references to OpenSSL, libcrypto, FIPS APIs,
+# or any cipher/TLS primitives — only false positives from Unicode script codes
+# and Rust Thread-Local Storage symbols.
+#
+# @vscode/ripgrep — original single-platform package (legacy, kept for
+# backward compatibility with older builds).
+# @vscode/ripgrep-universal — new all-platform bundle introduced upstream;
+# non-target platform binaries are stripped at VS Code packaging time.
+# See: https://github.com/microsoft/vscode/commit/c4471e2
+# -----------------------------------------------------------------------------
+[[payload.devspaces-code-rhel9-container.ignore]]
+error = "ErrNotDynLinked"
+files = [
+  "/checode-linux-libc/ubi8/node_modules/@vscode/ripgrep/bin/rg",
+  "/checode-linux-libc/ubi9/node_modules/@vscode/ripgrep/bin/rg",
+  "/checode-linux-libc/ubi8/node_modules/@vscode/ripgrep-universal/bin/linux-x64/rg",
+  "/checode-linux-libc/ubi9/node_modules/@vscode/ripgrep-universal/bin/linux-x64/rg",
+  "/checode-linux-libc/ubi8/node_modules/@vscode/ripgrep-universal/bin/linux-arm64/rg",
+  "/checode-linux-libc/ubi9/node_modules/@vscode/ripgrep-universal/bin/linux-arm64/rg",
+  "/checode-linux-libc/ubi8/node_modules/@vscode/ripgrep-universal/bin/linux-ppc64/rg",
+  "/checode-linux-libc/ubi9/node_modules/@vscode/ripgrep-universal/bin/linux-ppc64/rg",
+  "/checode-linux-libc/ubi8/node_modules/@vscode/ripgrep-universal/bin/linux-s390x/rg",
+  "/checode-linux-libc/ubi9/node_modules/@vscode/ripgrep-universal/bin/linux-s390x/rg",
+]
+
+# -----------------------------------------------------------------------------
 # Open Data Hub (ODH) / RHOAI payloads: odh-workbench-* and odh-pipeline-runtime-*
 #
 # odh-workbench-* images are interactive JupyterLab and code-server workbenches.
